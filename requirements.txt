@@ -1,0 +1,17 @@
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Werkzeug==3.0.1
+python-dotenv==1.0.0
+gunicorn==21.2.0
+
+# Pour l'analyse boursière
+pandas==2.1.4
+numpy==1.26.2
+yfinance==0.2.33
+
+# Pour les graphiques Plotly
+plotly==5.18.0
+
+# Pour l'analyse statistique
+statsmodels==0.14.1
+scipy==1.11.4

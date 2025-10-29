@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - Trading Analysis{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="text-white mb-4">
+            <i class="bi bi-shield-lock"></i> Panneau d'Administration
+        </h1>
+    </div>
+</div>
+
+<!-- ========== SECTION COMPTES EN ATTENTE ========== -->
+{% if pending_users|length > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0">
+                    <i class="bi bi-hourglass-split"></i> Comptes en attente d'approbation
+                    <span class="badge bg-dark">{{ pending_users|length }}</span>
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Utilisateur</th>
+                                <th>Email</th>
+                                <th>Date inscription</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in pending_users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>
+                                    <i class="bi bi-person-circle text-warning"></i> {{ user.username }}
+                                </td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>
+                                    <!-- Approuver -->
+                                    <form method="POST" action="{{ url_for('approve_user', user_id=user.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-success" title="Approuver ce compte">
+                                            <i class="bi bi-check-circle"></i> Approuver
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- Rejeter -->
+                                    <form method="POST" action="{{ url_for('reject_user', user_id=user.id) }}" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Rejeter le compte de {{ user.username }} ? Il sera supprimé.');">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Rejeter et supprimer">
+                                            <i class="bi bi-x-circle"></i> Rejeter
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="alert alert-info mb-0 mt-3">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Processus :</strong> Vérifiez que le paiement Stripe a été reçu avant d'approuver un compte.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Add User Section -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="mb-4">
+                    <i class="bi bi-person-plus"></i> Ajouter un utilisateur
+                </h4>
+                
+                <form method="POST" action="{{ url_for('add_user') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Nom d'utilisateur</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_admin" name="is_admin">
+                        <label class="form-check-label" for="is_admin">
+                            Droits administrateur
+                        </label>
+                    </div>
+                    
+                    <!-- NOUVEAU : Checkbox auto-approbation -->
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="auto_approve" name="auto_approve" checked>
+                        <label class="form-check-label" for="auto_approve">
+                            Approuver automatiquement
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle"></i> Ajouter
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Stats Cards (AMÉLIORÉES) -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h3 class="text-success">{{ approved_count }}</h3>
+                        <small class="text-muted">Approuvés</small>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="text-warning">{{ pending_users|length }}</h3>
+                        <small class="text-muted">En attente</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <h2 class="display-4 text-primary">{{ users|length }}</h2>
+                    <p class="text-muted mb-0">Total utilisateurs</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Users List (UTILISATEURS ACTIFS UNIQUEMENT) -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="mb-4">
+                    <i class="bi bi-people"></i> Utilisateurs actifs
+                </h4>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Utilisateur</th>
+                                <th>Email</th>
+                                <th>Statut</th>
+                                <th>Date création</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in approved_users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>
+                                    <i class="bi bi-person-circle text-success"></i> {{ user.username }}
+                                </td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.is_admin %}
+                                        <span class="badge bg-danger">Admin</span>
+                                    {% else %}
+                                        <span class="badge bg-success">User</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.created_at.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <!-- Toggle Admin -->
+                                    <form method="POST" action="{{ url_for('toggle_admin', user_id=user.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-warning" 
+                                                title="Basculer droits admin"
+                                                {% if user.id == session.user_id %}disabled{% endif %}>
+                                            <i class="bi bi-shield"></i>
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- NOUVEAU : Révoquer accès -->
+                                    <form method="POST" action="{{ url_for('revoke_user', user_id=user.id) }}" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Révoquer l\'accès de {{ user.username }} ? Il ne pourra plus se connecter.');">
+                                        <button type="submit" class="btn btn-sm btn-secondary"
+                                                title="Révoquer l'accès"
+                                                {% if user.id == session.user_id %}disabled{% endif %}>
+                                            <i class="bi bi-lock"></i>
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- Delete User -->
+                                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer {{ user.username }} ?');">
+                                        <button type="submit" class="btn btn-sm btn-danger"
+                                                {% if user.id == session.user_id %}disabled{% endif %}>
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
